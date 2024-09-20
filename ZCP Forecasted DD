@@ -1,0 +1,122 @@
+WITH ll_records AS (select *
+                   from cbs_meterdata_final.metalogic_forecast_data
+				   where ((mpan like '% HH%') or (mpan like '% NHH%'))        
+				   and (mpan not like '%BGL Deemed HH%') and (mpan not like '%Supercustomer%') 
+				   and (mpan not like '%Total%') and (mpan not like '%REGO%') 
+				   and (mpan not like '%GOO%') and (mpan not like '%Zero Carbon%') 
+				   and (date_parse(substr(settlementdate, 1, position(' ' in settlementdate) - 1), '%d/%m/%Y') 
+				        >= date_parse('01/01/2022', '%d/%m/%Y'))),
+
+monthly_forecasts as 
+(select a.BU, a.Month_Start_date, sum(a.DailyConsumptions_inMWh) as DailyConsumptions_inMWh, 
+        CURRENT_TIMESTAMP AS RunDate
+		from (						
+               select case when ((split_part(latest.mpan, ' ', 1) = 'BGL') or 
+                                (split_part(latest.mpan, ' ', 1) = 'BGP') or 
+							    (split_part(latest.mpan, ' ', 1) = 'SMB'))  THEN 'Small' 
+											
+						  when ((split_part(latest.mpan, ' ', 1) = 'ENT') or 
+                                (split_part(latest.mpan, ' ', 1) = 'I&C')) THEN 'CBS' 
+						  
+						  ELSE 'UNKNOWN' 
+						  END as BU, 
+						  
+			  date_parse(substr(latest.settlementdate, 1, position(' ' in latest.settlementdate) - 1), '%d/%m/%Y') 
+			  as settlement_date, 
+			  
+			  date_parse(cast(YEAR(date_parse(substr(latest.settlementdate, 1, position(' ' in latest.settlementdate) - 1), '%d/%m/%Y'))*10000 +  
+			                  MONTH(date_parse(substr(latest.settlementdate, 1, position(' ' in latest.settlementdate) - 1), '%d/%m/%Y'))*100 + 1 as varchar(255)), '%Y%m%d') 
+							  AS Month_Start_Date,
+							  
+					    (COALESCE(cast(hh1 as REAL), 0) +
+						 COALESCE(cast(hh2 as REAL), 0) + 
+						 COALESCE(cast(hh3 as REAL), 0) + 
+						 COALESCE(cast(hh4 as REAL), 0) + 
+						 COALESCE(cast(hh5 as REAL), 0) + 
+						 COALESCE(cast(hh6 as REAL), 0) + 
+						 COALESCE(cast(hh7 as REAL), 0) + 
+						 COALESCE(cast(hh8 as REAL), 0) + 
+						 COALESCE(cast(hh9 as REAL), 0) + 
+						 COALESCE(cast(hh10 as REAL), 0) +
+						 COALESCE(cast(hh11 as REAL), 0) +
+						 COALESCE(cast(hh12 as REAL), 0) +       
+						 COALESCE(cast(hh13 as REAL), 0) +       
+						 COALESCE(cast(hh14 as REAL), 0) +       
+						 COALESCE(cast(hh15 as REAL), 0) +       
+						 COALESCE(cast(hh16 as REAL), 0) +       
+						 COALESCE(cast(hh17 as REAL), 0) +       
+						 COALESCE(cast(hh18 as REAL), 0) +       
+						 COALESCE(cast(hh19 as REAL), 0) +       
+						 COALESCE(cast(hh20 as REAL), 0) +       
+						 COALESCE(cast(hh21 as REAL), 0) +       
+						 COALESCE(cast(hh22 as REAL), 0) +       
+						 COALESCE(cast(hh23 as REAL), 0) +       
+						 COALESCE(cast(hh24 as REAL), 0) +       
+						 COALESCE(cast(hh25 as REAL), 0) +       
+						 COALESCE(cast(hh26 as REAL), 0) +       
+						 COALESCE(cast(hh27 as REAL), 0) +       
+						 COALESCE(cast(hh28 as REAL), 0) +       
+						 COALESCE(cast(hh29 as REAL), 0) +       
+						 COALESCE(cast(hh30 as REAL), 0) +       
+						 COALESCE(cast(hh31 as REAL), 0) +       
+						 COALESCE(cast(hh32 as REAL), 0) +       
+						 COALESCE(cast(hh33 as REAL), 0) +       
+						 COALESCE(cast(hh34 as REAL), 0) +       
+						 COALESCE(cast(hh35 as REAL), 0) +       
+						 COALESCE(cast(hh36 as REAL), 0) +       
+						 COALESCE(cast(hh37 as REAL), 0) +       
+						 COALESCE(cast(hh38 as REAL), 0) +       
+						 COALESCE(cast(hh39 as REAL), 0) +       
+						 COALESCE(cast(hh40 as REAL), 0) +       
+						 COALESCE(cast(hh41 as REAL), 0) +       
+						 COALESCE(cast(hh42 as REAL), 0) +       
+						 COALESCE(cast(hh43 as REAL), 0) +       
+						 COALESCE(cast(hh44 as REAL), 0) +       
+						 COALESCE(cast(hh45 as REAL), 0) +       
+						 COALESCE(cast(hh46 as REAL), 0) +       
+						 COALESCE(cast(hh47 as REAL), 0) +       
+						 COALESCE(cast(hh48 as REAL), 0) +       
+						 COALESCE(cast(hh49 as REAL), 0) +       
+						 COALESCE(cast(hh50 as REAL), 0))/1000              
+						 as DailyConsumptions_inMWh      
+						 
+						 from (select zzz.mpan, 
+						              zzz.settlementdate, 
+					 			  zzz.filetime       
+					 	   from ( 
+					 	          select a.mpan, 
+					 			         a.settlementdate, 
+					 					 a.filetime,    
+					 					 
+					 			  CASE WHEN 
+					 		      cast(substr(a.filetime,1,10) as date)
+					 			  < cast(substr((select max(file_raw_ts) from ll_records),1,10) as date) AND 
+					 			  (DATE_ADD('day', -1, date(parse_datetime(settlementdate, 'dd/MM/YYYY 00:00'))) 
+					 			  > cast(substr(a.filetime,1,10) as date))
+					 			  
+					 			  THEN 1 ELSE 0 END as unwant_forefilter    
+					 					 from (select mpan, settlementdate, max(file_raw_ts) filetime                 
+					 	                       from ll_records group by mpan, settlementdate) a
+					 			              ) zzz                 
+					 	   where zzz.unwant_forefilter = 0 ) latest 
+											 
+							   inner join cbs_meterdata_final.metalogic_forecast_data
+							   on cbs_meterdata_final.metalogic_forecast_data.mpan= latest.mpan
+							   and cbs_meterdata_final.metalogic_forecast_data.file_raw_ts = latest.filetime  
+							   and cbs_meterdata_final.metalogic_forecast_data.settlementdate = latest.settlementdate 
+							   
+							   where ((latest.mpan like '% HH%') or (latest.mpan like '% NHH%'))
+							   and (latest.mpan not like '%BGL Deemed HH%')
+							   and (latest.mpan not like '%Supercustomer%')
+							   and (latest.mpan not like '%Total%')
+							   and (latest.mpan not like '%REGO%')
+							   and (latest.mpan not like '%GOO%')
+							   and (latest.mpan not like '%Zero Carbon%')) a
+							   
+group by a.BU, a.Month_Start_date) 
+											 
+select monthly_forecasts.BU, monthly_forecasts.Month_Start_date,        
+      (case when (monthly_forecasts.DailyConsumptions_inMWh is Null) then 0 
+	        else monthly_forecasts.DailyConsumptions_inMWh end) as Monthly_forecast_MWh 
+from monthly_forecasts 
+order by monthly_forecasts.BU, monthly_forecasts.Month_Start_date
